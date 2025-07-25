@@ -21,7 +21,7 @@ function U2(r, rho, gamma, T, A, B) {
         if (term2 < 0 && (1 - gamma) % 1 !== 0) return -Infinity;
     }
     
-    const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(Math.abs(kappaVal), -gamma);
+    const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(kappaVal, -gamma);
     const den = (1 - gamma) * Math.pow(term2, 1 - gamma);
     
     const result = num / den;
@@ -58,71 +58,79 @@ function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
 }
 
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
-    // Implement constrained optimization using penalty method
-    // Constraints from Wolfram: w1 > 0, w2 > 0, w2 < w1*(1-tau)*exp(r*t2), w1 < w0*exp(r*t1)
+    // Fixed constraints from Wolfram: w1 > 0, w2 > 0, w2 < w1*(1-tau)*exp(r*t2), w1 < 1*exp(r*t1)
+    // Note: Wolfram uses "1" not "w0" in the constraint!
     
-    const maxW1 = w0 * Math.exp(r * t1);
-    const penaltyWeight = 1e6;
+    const maxW1 = Math.exp(r * t1); // This should be 1*exp(r*t1), not w0*exp(r*t1)
     
-    const objectiveWithPenalties = (vars) => {
+    // Simple grid search first to find approximate optimum, then refine
+    let bestW1 = 0, bestW2 = 0, bestU = -Infinity;
+    
+    // Coarse grid search
+    const w1_steps = 50;
+    const w2_steps = 50;
+    
+    for (let i = 1; i < w1_steps; i++) {
+        const w1 = (maxW1 - 0.01) * i / w1_steps + 0.01;
+        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2) - 0.01;
+        
+        for (let j = 1; j < w2_steps; j++) {
+            const w2 = (maxW2 - 0.01) * j / w2_steps + 0.01;
+            
+            // Check constraints
+            if (w1 > 0 && w2 > 0 && w1 < maxW1 && w2 < w1 * (1 - tau) * Math.exp(r * t2)) {
+                const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
+                
+                if (isFinite(u) && u > bestU) {
+                    bestU = u;
+                    bestW1 = w1;
+                    bestW2 = w2;
+                }
+            }
+        }
+    }
+    
+    if (bestU === -Infinity) {
+        console.warn('Grid search failed, using fallback');
+        return [maxW1 * 0.5, maxW1 * 0.4];
+    }
+    
+    // Now refine with numeric optimization around the best grid point
+    const objectiveFunction = (vars) => {
         const w1 = vars[0];
         const w2 = vars[1];
         
-        // Check constraints and add penalties
-        let penalty = 0;
+        // Hard constraint enforcement - return -Infinity if constraints violated
+        if (w1 <= 0 || w2 <= 0 || w1 >= maxW1 || w2 >= w1 * (1 - tau) * Math.exp(r * t2)) {
+            return 1e10; // Large penalty for constraint violation
+        }
         
-        if (w1 <= 0) penalty += penaltyWeight * (1 - w1) * (1 - w1);
-        if (w2 <= 0) penalty += penaltyWeight * (1 - w2) * (1 - w2);
-        if (w1 >= maxW1) penalty += penaltyWeight * (w1 - maxW1 + 0.01) * (w1 - maxW1 + 0.01);
-        
-        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2);
-        if (w2 >= maxW2) penalty += penaltyWeight * (w2 - maxW2 + 0.01) * (w2 - maxW2 + 0.01);
-        
-        // Get utility (remembering to handle complex number case)
         const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
         
-        if (u === -5000) {
-            return 5000 + penalty; // Convert to minimization problem
+        if (!isFinite(u) || u === -5000) {
+            return 1e10;
         }
         
-        if (!isFinite(u) || isNaN(u)) {
-            return 5000 + penalty;
-        }
-        
-        return -u + penalty; // Convert to minimization and add penalties
+        return -u; // Convert to minimization
     };
     
-    // Try multiple starting points to avoid local minima
-    const startingPoints = [
-        [maxW1 * 0.3, maxW1 * 0.2],
-        [maxW1 * 0.5, maxW1 * 0.4],
-        [maxW1 * 0.7, maxW1 * 0.6],
-        [maxW1 * 0.1, maxW1 * 0.1],
-        [maxW1 * 0.9, maxW1 * 0.8]
-    ];
-    
-    let bestSolution = null;
-    let bestValue = Infinity;
-    
-    for (const start of startingPoints) {
-        try {
-            const sol = numeric.uncmin(objectiveWithPenalties, start, 1e-8, null, 1000);
-            if (sol && sol.f < bestValue) {
-                bestValue = sol.f;
-                bestSolution = sol.solution;
+    try {
+        const result = numeric.uncmin(objectiveFunction, [bestW1, bestW2], 1e-10, null, 1000);
+        
+        if (result && isFinite(result.f)) {
+            const [finalW1, finalW2] = result.solution;
+            
+            // Verify final result satisfies constraints
+            if (finalW1 > 0 && finalW2 > 0 && finalW1 < maxW1 && finalW2 < finalW1 * (1 - tau) * Math.exp(r * t2)) {
+                return [finalW1, finalW2];
             }
-        } catch (error) {
-            continue; // Try next starting point
         }
+    } catch (error) {
+        console.warn('Refinement optimization failed:', error);
     }
     
-    if (bestSolution) {
-        return [Math.max(0.001, bestSolution[0]), Math.max(0.001, bestSolution[1])];
-    }
-    
-    // Fallback: return reasonable default values
-    console.warn('Optimization failed, using fallback values');
-    return [maxW1 * 0.5, maxW1 * 0.4];
+    // Return grid search result if refinement fails
+    return [bestW1, bestW2];
 }
 
 function c01(r, rho, gamma, t1, w0, w1) {
@@ -424,4 +432,5 @@ function getTaxTable(params) {
         </table>
     `;
 }
+
 
