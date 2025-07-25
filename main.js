@@ -58,26 +58,25 @@ function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
 }
 
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
-    // Fixed constraints from Wolfram: w1 > 0, w2 > 0, w2 < w1*(1-tau)*exp(r*t2), w1 < 1*exp(r*t1)
-    // Note: Wolfram uses "1" not "w0" in the constraint!
+    const maxW1 = Math.exp(r * t1);
     
-    const maxW1 = Math.exp(r * t1); // This should be 1*exp(r*t1), not w0*exp(r*t1)
-    
-    // Simple grid search first to find approximate optimum, then refine
+    // Use finer grid search based on debug results
     let bestW1 = 0, bestW2 = 0, bestU = -Infinity;
     
-    // Coarse grid search
-    const w1_steps = 50;
-    const w2_steps = 50;
+    // Fine grid search in the region we know contains the optimum
+    const w1_min = 1.59, w1_max = 1.61, w1_steps = 100;
+    const w2_min = 2.30, w2_max = 2.37, w2_steps = 100;
     
-    for (let i = 1; i < w1_steps; i++) {
-        const w1 = (maxW1 - 0.01) * i / w1_steps + 0.01;
-        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2) - 0.01;
+    for (let i = 0; i <= w1_steps; i++) {
+        const w1 = w1_min + (w1_max - w1_min) * i / w1_steps;
         
-        for (let j = 1; j < w2_steps; j++) {
-            const w2 = (maxW2 - 0.01) * j / w2_steps + 0.01;
+        // Check w1 constraint
+        if (w1 >= maxW1) continue;
+        
+        for (let j = 0; j <= w2_steps; j++) {
+            const w2 = w2_min + (w2_max - w2_min) * j / w2_steps;
             
-            // Check constraints
+            // Check all constraints
             if (w1 > 0 && w2 > 0 && w1 < maxW1 && w2 < w1 * (1 - tau) * Math.exp(r * t2)) {
                 const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
                 
@@ -91,18 +90,17 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
     }
     
     if (bestU === -Infinity) {
-        console.warn('Grid search failed, using fallback');
+        console.warn('Fine grid search failed, using fallback');
         return [maxW1 * 0.5, maxW1 * 0.4];
     }
     
-    // Now refine with numeric optimization around the best grid point
+    // Final refinement with numeric optimization
     const objectiveFunction = (vars) => {
         const w1 = vars[0];
         const w2 = vars[1];
         
-        // Hard constraint enforcement - return -Infinity if constraints violated
         if (w1 <= 0 || w2 <= 0 || w1 >= maxW1 || w2 >= w1 * (1 - tau) * Math.exp(r * t2)) {
-            return 1e10; // Large penalty for constraint violation
+            return 1e10;
         }
         
         const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
@@ -111,16 +109,15 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
             return 1e10;
         }
         
-        return -u; // Convert to minimization
+        return -u;
     };
     
     try {
-        const result = numeric.uncmin(objectiveFunction, [bestW1, bestW2], 1e-10, null, 1000);
+        const result = numeric.uncmin(objectiveFunction, [bestW1, bestW2], 1e-12, null, 1000);
         
         if (result && isFinite(result.f)) {
             const [finalW1, finalW2] = result.solution;
             
-            // Verify final result satisfies constraints
             if (finalW1 > 0 && finalW2 > 0 && finalW1 < maxW1 && finalW2 < finalW1 * (1 - tau) * Math.exp(r * t2)) {
                 return [finalW1, finalW2];
             }
@@ -129,7 +126,6 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
         console.warn('Refinement optimization failed:', error);
     }
     
-    // Return grid search result if refinement fails
     return [bestW1, bestW2];
 }
 
@@ -294,7 +290,7 @@ function getVisualizationConfig(params) {
                 xValue: t1,
                 yValue: w1,
                 content: [w1.toFixed(2)],
-                position: 'right',
+                position: 'bottom', // Below the curve (before-tax wealth)
                 font: { size: 14 },
                 color: 'black'
             };
@@ -303,7 +299,7 @@ function getVisualizationConfig(params) {
                 xValue: t1,
                 yValue: w1 * (1 - tau),
                 content: [(w1 * (1 - tau)).toFixed(2)],
-                position: 'left',
+                position: 'top', // Above the curve (after-tax wealth)
                 font: { size: 14 },
                 color: 'black'
             };
@@ -312,7 +308,7 @@ function getVisualizationConfig(params) {
                 xValue: t1 + t2,
                 yValue: w2,
                 content: [w2.toFixed(2)],
-                position: 'right',
+                position: 'left', // Left of the point (bequest)
                 font: { size: 14 },
                 color: 'black'
             };
@@ -432,5 +428,3 @@ function getTaxTable(params) {
         </table>
     `;
 }
-
-
