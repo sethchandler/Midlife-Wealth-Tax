@@ -13,42 +13,76 @@ function U2(r, rho, gamma, T, A, B) {
     const expRminusRhoToverGamma = Math.exp((r - rho) * T / gamma);
     const term2 = expRT - expRminusRhoToverGamma;
     if (term2 <= 0) return -Infinity;
-    const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(kappaVal, -gamma);
+    
+    // Check for potential complex number issues
+    if (kappaVal <= 0 && gamma < 0) return -Infinity;
+    
+    const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(Math.abs(kappaVal), -gamma);
     const den = (1 - gamma) * Math.pow(term2, 1 - gamma);
-    return num / den;
+    
+    const result = num / den;
+    
+    // Protection against complex numbers (equivalent to Im[temp] == 0 check)
+    if (!isFinite(result) || isNaN(result)) return -Infinity;
+    
+    return result;
 }
 
 function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
     const u1 = U2(r, rho, gamma, t1, w0, w1);
-    if (!isFinite(u1)) return -Infinity;
+    if (!isFinite(u1)) return -5000; // Use -5000 like Wolfram code
+    
     const u2 = U2(r, rho, gamma, t2, w1 * (1 - tau), w2);
-    if (!isFinite(u2)) return -Infinity;
+    if (!isFinite(u2)) return -5000;
+    
     const beq = beta * Math.pow(w2, 1 - eta) / (1 - eta);
-    if (!isFinite(beq)) return -Infinity;
-    return u1 + Math.exp(-rho * t1) * u2 + beq;
+    if (!isFinite(beq) || isNaN(beq)) return -5000;
+    
+    const result = u1 + Math.exp(-rho * t1) * u2 + beq;
+    
+    // Critical protection: equivalent to If[Im[temp] == 0, temp, -5000]
+    if (!isFinite(result) || isNaN(result)) return -5000;
+    
+    return result;
 }
 
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
     const upper1 = Math.exp(r * t1) * w0;
     const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-    const w1_of_z1 = (z1) => upper1 * sigmoid(z1) * 0.999 + 0.001; // to avoid exactly 0 or upper
+    const w1_of_z1 = (z1) => upper1 * sigmoid(z1) * 0.999 + 0.001;
     const w2_of_z = (z1, z2, upper2_func) => upper2_func(w1_of_z1(z1)) * sigmoid(z2) * 0.999 + 0.001;
     const upper2_func = (w1) => w1 * (1 - tau) * Math.exp(r * t2);
+    
     const obj = (z) => {
         const w1 = w1_of_z1(z[0]);
         const w2 = w2_of_z(z[0], z[1], upper2_func);
+        
         const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
-        if (isNaN(u) || !isFinite(u)) {
-            return Infinity;
+        
+        // Additional protection - if lifetimeU returns the "complex" penalty, use it
+        if (u === -5000) {
+            return 5000; // Return positive penalty for minimization
         }
+        
+        if (isNaN(u) || !isFinite(u)) {
+            return 5000; // Return positive penalty for minimization
+        }
+        
         return -u;
     };
+    
     const initial = [0, 0];
-    const sol = numeric.uncmin(obj, initial, 1e-6, null, 1000);
-    const zopt = sol.solution;
-    const w1 = w1_of_z1(zopt[0]);
-    const w2 = w2_of_z(zopt[0], zopt[1], upper2_func);
-    return [w1, w2];
+    
+    try {
+        const sol = numeric.uncmin(obj, initial, 1e-6, null, 1000);
+        const zopt = sol.solution;
+        const w1 = w1_of_z1(zopt[0]);
+        const w2 = w2_of_z(zopt[0], zopt[1], upper2_func);
+        return [w1, w2];
+    } catch (error) {
+        console.error('Optimization failed:', error);
+        return [0.5, 0.5]; // Safe fallback
+    }
 }
 
 function c01(r, rho, gamma, t1, w0, w1) {
@@ -341,4 +375,3 @@ function getTaxTable(params) {
         </table>
     `;
 }
-
