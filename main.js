@@ -1,4 +1,4 @@
-// main.js
+// main.js - Corrected version matching Wolfram constraints exactly
 
 function kappa(r, rho, gamma) {
     return (r * (gamma - 1) + rho) / gamma;
@@ -8,21 +8,24 @@ function U2(r, rho, gamma, T, A, B) {
     const expRT = Math.exp(r * T);
     const term1 = expRT * A - B;
     if (term1 <= 0) return -Infinity;
+    
     const kappaVal = kappa(r, rho, gamma);
     const expNegKappaT = Math.exp(-kappaVal * T);
     const expRminusRhoToverGamma = Math.exp((r - rho) * T / gamma);
     const term2 = expRT - expRminusRhoToverGamma;
     if (term2 <= 0) return -Infinity;
     
-    // Check for potential complex number issues
-    if (kappaVal <= 0 && gamma < 0) return -Infinity;
+    // Handle potential complex number issues from fractional powers
+    if (gamma !== 1) {
+        if (term1 < 0 && (1 - gamma) % 1 !== 0) return -Infinity;
+        if (term2 < 0 && (1 - gamma) % 1 !== 0) return -Infinity;
+    }
     
     const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(Math.abs(kappaVal), -gamma);
     const den = (1 - gamma) * Math.pow(term2, 1 - gamma);
     
     const result = num / den;
     
-    // Protection against complex numbers (equivalent to Im[temp] == 0 check)
     if (!isFinite(result) || isNaN(result)) return -Infinity;
     
     return result;
@@ -30,59 +33,96 @@ function U2(r, rho, gamma, T, A, B) {
 
 function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
     const u1 = U2(r, rho, gamma, t1, w0, w1);
-    if (!isFinite(u1)) return -5000; // Use -5000 like Wolfram code
+    if (!isFinite(u1) || u1 === -Infinity) return -5000;
     
     const u2 = U2(r, rho, gamma, t2, w1 * (1 - tau), w2);
-    if (!isFinite(u2)) return -5000;
+    if (!isFinite(u2) || u2 === -Infinity) return -5000;
     
-    const beq = beta * Math.pow(w2, 1 - eta) / (1 - eta);
+    // Handle bequest term carefully
+    let beq;
+    if (eta === 1) {
+        beq = beta * Math.log(Math.max(w2, 1e-10));
+    } else {
+        if (w2 <= 0 && (1 - eta) % 1 !== 0) return -5000;
+        beq = beta * Math.pow(Math.max(w2, 1e-10), 1 - eta) / (1 - eta);
+    }
+    
     if (!isFinite(beq) || isNaN(beq)) return -5000;
     
     const result = u1 + Math.exp(-rho * t1) * u2 + beq;
     
-    // Critical protection: equivalent to If[Im[temp] == 0, temp, -5000]
+    // Critical protection against complex numbers
     if (!isFinite(result) || isNaN(result)) return -5000;
     
     return result;
 }
 
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
-    const upper1 = Math.exp(r * t1) * w0;
-    const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-    const w1_of_z1 = (z1) => upper1 * sigmoid(z1) * 0.999 + 0.001;
-    const w2_of_z = (z1, z2, upper2_func) => upper2_func(w1_of_z1(z1)) * sigmoid(z2) * 0.999 + 0.001;
-    const upper2_func = (w1) => w1 * (1 - tau) * Math.exp(r * t2);
+    // Implement constrained optimization using penalty method
+    // Constraints from Wolfram: w1 > 0, w2 > 0, w2 < w1*(1-tau)*exp(r*t2), w1 < w0*exp(r*t1)
     
-    const obj = (z) => {
-        const w1 = w1_of_z1(z[0]);
-        const w2 = w2_of_z(z[0], z[1], upper2_func);
+    const maxW1 = w0 * Math.exp(r * t1);
+    const penaltyWeight = 1e6;
+    
+    const objectiveWithPenalties = (vars) => {
+        const w1 = vars[0];
+        const w2 = vars[1];
         
+        // Check constraints and add penalties
+        let penalty = 0;
+        
+        if (w1 <= 0) penalty += penaltyWeight * (1 - w1) * (1 - w1);
+        if (w2 <= 0) penalty += penaltyWeight * (1 - w2) * (1 - w2);
+        if (w1 >= maxW1) penalty += penaltyWeight * (w1 - maxW1 + 0.01) * (w1 - maxW1 + 0.01);
+        
+        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2);
+        if (w2 >= maxW2) penalty += penaltyWeight * (w2 - maxW2 + 0.01) * (w2 - maxW2 + 0.01);
+        
+        // Get utility (remembering to handle complex number case)
         const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
         
-        // Additional protection - if lifetimeU returns the "complex" penalty, use it
         if (u === -5000) {
-            return 5000; // Return positive penalty for minimization
+            return 5000 + penalty; // Convert to minimization problem
         }
         
-        if (isNaN(u) || !isFinite(u)) {
-            return 5000; // Return positive penalty for minimization
+        if (!isFinite(u) || isNaN(u)) {
+            return 5000 + penalty;
         }
         
-        return -u;
+        return -u + penalty; // Convert to minimization and add penalties
     };
     
-    const initial = [0, 0];
+    // Try multiple starting points to avoid local minima
+    const startingPoints = [
+        [maxW1 * 0.3, maxW1 * 0.2],
+        [maxW1 * 0.5, maxW1 * 0.4],
+        [maxW1 * 0.7, maxW1 * 0.6],
+        [maxW1 * 0.1, maxW1 * 0.1],
+        [maxW1 * 0.9, maxW1 * 0.8]
+    ];
     
-    try {
-        const sol = numeric.uncmin(obj, initial, 1e-6, null, 1000);
-        const zopt = sol.solution;
-        const w1 = w1_of_z1(zopt[0]);
-        const w2 = w2_of_z(zopt[0], zopt[1], upper2_func);
-        return [w1, w2];
-    } catch (error) {
-        console.error('Optimization failed:', error);
-        return [0.5, 0.5]; // Safe fallback
+    let bestSolution = null;
+    let bestValue = Infinity;
+    
+    for (const start of startingPoints) {
+        try {
+            const sol = numeric.uncmin(objectiveWithPenalties, start, 1e-8, null, 1000);
+            if (sol && sol.f < bestValue) {
+                bestValue = sol.f;
+                bestSolution = sol.solution;
+            }
+        } catch (error) {
+            continue; // Try next starting point
+        }
     }
+    
+    if (bestSolution) {
+        return [Math.max(0.001, bestSolution[0]), Math.max(0.001, bestSolution[1])];
+    }
+    
+    // Fallback: return reasonable default values
+    console.warn('Optimization failed, using fallback values');
+    return [maxW1 * 0.5, maxW1 * 0.4];
 }
 
 function c01(r, rho, gamma, t1, w0, w1) {
@@ -182,6 +222,9 @@ function getVisualizationConfig(params) {
             const pairW = optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau);
             const w1 = pairW[0];
             const w2 = pairW[1];
+            
+            console.log('Optimal wealth pair:', {w1, w2}); // Debug output
+            
             const dataGreen = [];
             for (let i = 0; i <= numPoints; i++) {
                 const t = (t1 / numPoints) * i;
@@ -192,6 +235,12 @@ function getVisualizationConfig(params) {
                 const s = t1 + (t2 / numPoints) * i;
                 dataRed.push({ x: s, y: wPath2(r, rho, gamma, t2, w1, tau, w2)(s - t1) });
             }
+            
+            // Verify continuity at t=t1 when tau=0
+            const greenEnd = wPath1(r, rho, gamma, t1, 1, w1)(t1);
+            const redStart = wPath2(r, rho, gamma, t2, w1, tau, w2)(0);
+            console.log('Continuity check at t1:', {greenEnd, redStart, expectedRedStart: w1 * (1 - tau)});
+            
             config.data.datasets.push({
                 data: dataGreen,
                 borderColor: 'green',
@@ -375,3 +424,4 @@ function getTaxTable(params) {
         </table>
     `;
 }
+
