@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Effect Visualization</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2"></script>
+</head>
+<body>
+    <div class="controls">
+        <label>Interest rate: <input type="range" id="r" min="0.01" max="0.09" step="0.01" value="0.06"><span id="r-val">0.06</span></label>
+        <label>Impatience rate: <input type="range" id="rho" min="0.02" max="0.09" step="0.01" value="0.04"><span id="rho-val">0.04</span></label>
+        <label>Consumption risk aversion: <input type="range" id="gamma" min="0.3" max="2.5" step="0.2" value="0.7"><span id="gamma-val">0.7</span></label>
+        <label>Bequest risk aversion: <input type="range" id="eta" min="0.3" max="2.5" step="0.2" value="1.7"><span id="eta-val">1.7</span></label>
+        <label>Bequest importance: <input type="range" id="beta" min="0" max="15" step="0.1" value="3"><span id="beta-val">3</span></label>
+        <label>Tax rate: <input type="range" id="tau" min="0" max="0.5" step="0.01" value="0"><span id="tau-val">0</span></label>
+        <label>Years before tax: <input type="range" id="t1" min="10" max="30" step="1" value="20"><span id="t1-val">20</span></label>
+        <label>Years after tax: <input type="range" id="t2" min="10" max="30" step="1" value="25"><span id="t2-val">25</span></label>
+        <label>Visualize: 
+            <select id="visualize">
+                <option value="Wealth Trajectory">Wealth Trajectory</option>
+                <option value="Consumption Trajectory">Consumption Trajectory</option>
+                <option value="Tax Effect Curves">Tax Effect Curves</option>
+            </select>
+        </label>
+    </div>
+    <div id="chartContainer">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div id="tableContainer"></div>
+    <p>Created by Seth J. Chandler for educational use only</p>
+    <script src="main.js"></script>
+    <script src="ui.js"></script>
+</body>
+</html>
