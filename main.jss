@@ -6,56 +6,49 @@ function kappa(r, rho, gamma) {
 
 function U2(r, rho, gamma, T, A, B) {
     const expRT = Math.exp(r * T);
+    const term1 = expRT * A - B;
+    if (term1 <= 0) return -Infinity;
     const kappaVal = kappa(r, rho, gamma);
     const expNegKappaT = Math.exp(-kappaVal * T);
     const expRminusRhoToverGamma = Math.exp((r - rho) * T / gamma);
-    const num = Math.pow(expRT * A - B, 1 - gamma) * (1 - expNegKappaT) * Math.pow(kappaVal, -gamma);
-    const den = (1 - gamma) * Math.pow(expRT - expRminusRhoToverGamma, 1 - gamma);
+    const term2 = expRT - expRminusRhoToverGamma;
+    if (term2 <= 0) return -Infinity;
+    const num = Math.pow(term1, 1 - gamma) * (1 - expNegKappaT) * Math.pow(kappaVal, -gamma);
+    const den = (1 - gamma) * Math.pow(term2, 1 - gamma);
     return num / den;
 }
 
 function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
     const u1 = U2(r, rho, gamma, t1, w0, w1);
+    if (!isFinite(u1)) return -Infinity;
     const u2 = U2(r, rho, gamma, t2, w1 * (1 - tau), w2);
+    if (!isFinite(u2)) return -Infinity;
     const beq = beta * Math.pow(w2, 1 - eta) / (1 - eta);
+    if (!isFinite(beq)) return -Infinity;
     return u1 + Math.exp(-rho * t1) * u2 + beq;
 }
 
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
-    let maxVal = -Infinity;
-    let bestW1 = 0;
-    let bestW2 = 0;
-    const maxW1 = Math.exp(r * t1) * w0;
-    const coarseStep = 0.05;
-    for (let w1 = coarseStep; w1 < maxW1; w1 += coarseStep) {
-        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2);
-        for (let w2 = coarseStep; w2 < maxW2; w2 += coarseStep) {
-            const temp = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
-            if (!isNaN(temp) && temp > maxVal) {
-                maxVal = temp;
-                bestW1 = w1;
-                bestW2 = w2;
-            }
+    const upper1 = Math.exp(r * t1) * w0;
+    const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+    const w1_of_z1 = (z1) => upper1 * sigmoid(z1) * 0.999 + 0.001; // to avoid exactly 0 or upper
+    const w2_of_z = (z1, z2, upper2_func) => upper2_func(w1_of_z1(z1)) * sigmoid(z2) * 0.999 + 0.001;
+    const upper2_func = (w1) => w1 * (1 - tau) * Math.exp(r * t2);
+    const obj = (z) => {
+        const w1 = w1_of_z1(z[0]);
+        const w2 = w2_of_z(z[0], z[1], upper2_func);
+        const u = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
+        if (isNaN(u) || !isFinite(u)) {
+            return Infinity;
         }
-    }
-    // Refine
-    const fineStep = 0.005;
-    const minW1Ref = Math.max(fineStep, bestW1 - coarseStep * 2);
-    const maxW1Ref = Math.min(maxW1 - fineStep, bestW1 + coarseStep * 2);
-    for (let w1 = minW1Ref; w1 < maxW1Ref; w1 += fineStep) {
-        const maxW2 = w1 * (1 - tau) * Math.exp(r * t2);
-        const minW2Ref = Math.max(fineStep, bestW2 - coarseStep * 2);
-        const maxW2Ref = Math.min(maxW2 - fineStep, bestW2 + coarseStep * 2);
-        for (let w2 = minW2Ref; w2 < maxW2Ref; w2 += fineStep) {
-            const temp = lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2);
-            if (!isNaN(temp) && temp > maxVal) {
-                maxVal = temp;
-                bestW1 = w1;
-                bestW2 = w2;
-            }
-        }
-    }
-    return [bestW1, bestW2];
+        return -u;
+    };
+    const initial = [0, 0];
+    const sol = numeric.uncmin(obj, initial, 1e-6, null, 1000);
+    const zopt = sol.solution;
+    const w1 = w1_of_z1(zopt[0]);
+    const w2 = w2_of_z(zopt[0], zopt[1], upper2_func);
+    return [w1, w2];
 }
 
 function c01(r, rho, gamma, t1, w0, w1) {
@@ -105,7 +98,7 @@ function cPath2(r, rho, gamma, c02v) {
 function meanSlope(v) {
     let sum = 0;
     for (let i = 1; i < v.length; i++) {
-        sum += (v[i].y - v[i - 1].y) / (v[i].x - v[i - 1].x);
+        sum += (v[i].y - v[i-1].y) / (v[i].x - v[i-1].x);
     }
     return sum / (v.length - 1);
 }
@@ -244,7 +237,7 @@ function getVisualizationConfig(params) {
             const cGreenT1 = cPath1(r, rho, gamma, c01v)(t1);
             const cRed0 = cPath2(r, rho, gamma, c02v)(0);
             const cRedT2 = cPath2(r, rho, gamma, c02v)(t2);
-            const cmax = Math.max(cGreen0, cGreenT1, cRed0, cRedT2, 0.1); // Ensure min max
+            const cmax = Math.max(cGreen0, cGreenT1, cRed0, cRedT2, 0.1);
             const dataGreenC = [];
             for (let i = 0; i <= numPoints; i++) {
                 const t = (t1 / numPoints) * i;
@@ -348,3 +341,4 @@ function getTaxTable(params) {
         </table>
     `;
 }
+
