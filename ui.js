@@ -2,7 +2,7 @@
 
 let chart;
 const ctx = document.getElementById('myChart').getContext('2d');
-Chart.register(annotationPlugin)
+Chart.register(ChartAnnotation)
 
 function updateValues() {
     document.getElementById('r-val').textContent = document.getElementById('r').value;
