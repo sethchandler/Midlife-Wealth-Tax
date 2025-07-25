@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tax Effect Visualization</title>
     <link rel="stylesheet" href="style.css">
-   
 </head>
 <body>
     <div class="controls">
@@ -30,9 +29,24 @@
     </div>
     <div id="tableContainer"></div>
     <p>Created by Seth J. Chandler for educational use only</p>
-     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Load dependencies in correct order -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <script>
+        // Register the annotation plugin properly for the current Chart.js version
+        if (typeof Chart !== 'undefined' && Chart.register) {
+            // Try different possible names for the annotation plugin
+            if (typeof annotationPlugin !== 'undefined') {
+                Chart.register(annotationPlugin);
+            } else if (typeof ChartAnnotation !== 'undefined') {
+                Chart.register(ChartAnnotation);
+            } else if (window['chartjs-plugin-annotation']) {
+                Chart.register(window['chartjs-plugin-annotation']);
+            }
+        }
+    </script>
     <script src="main.js"></script>
     <script src="ui.js"></script>
 </body>
