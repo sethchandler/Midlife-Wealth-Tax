@@ -2,7 +2,7 @@
 
 let chart;
 const ctx = document.getElementById('myChart').getContext('2d');
-Chart.register(window['chartjs-plugin-annotation']);
+Chart.register(annotationPlugin)
 
 function updateValues() {
     document.getElementById('r-val').textContent = document.getElementById('r').value;
