@@ -1,8 +1,9 @@
 // ui.js
-
+// ui.js
 let chart;
 const ctx = document.getElementById('myChart').getContext('2d');
-//Chart.register(ChartAnnotation)
+
+// Removed Chart.register(annotationPlugin) - handled in HTML now
 
 function updateValues() {
     document.getElementById('r-val').textContent = document.getElementById('r').value;
@@ -54,3 +55,5 @@ inputs.forEach(input => {
 
 updateValues();
 updateChart();
+
+
