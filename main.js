@@ -336,12 +336,12 @@ function getVisualizationConfig(params) {
                 yValue: w1,
                 content: [w1.toFixed(2)],
                 position: 'center',
-                xAdjust: 15,  // Move right
-                yAdjust: 15,  // Move down (below the curve)
+                xAdjust: -15,  // Move right
+                yAdjust: -15,  // Move down (below the curve)
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                borderColor: 'black',
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                borderColor: 'rgba(128,128,128,0.3)',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label2 = {
@@ -354,22 +354,22 @@ function getVisualizationConfig(params) {
                 yAdjust: -15, // Move up (above the curve)
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                borderColor: 'black',
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                borderColor: 'rgba(128,128,128,0.3)',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label3 = {
                 type: 'label',
                 xValue: t1 + t2,
-                yValue: w2,
+                yValue: Math.min(3, w2),
                 content: [w2.toFixed(2)],
                 position: 'center',
                 xAdjust: -25, // Move well to the left so it's visible
-                yAdjust: 0,   // Keep at same height
+                yAdjust: 15,   // Keep at same height
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                borderColor: 'black',
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                borderColor: 'rgba(128,128,128,0.3)',
                 borderWidth: 1
             };
             config.options.scales.x.max = t1 + t2;
