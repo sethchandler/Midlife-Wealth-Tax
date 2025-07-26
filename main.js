@@ -197,7 +197,10 @@ function getVisualizationConfig(params) {
                     title: {
                         display: true,
                         text: 'years',
-                        font: { size: 24 }
+                        font: { size: 28 }
+                    },
+                    ticks: {
+                        font: { size: 18 }
                     }
                 },
                 y: {
@@ -205,7 +208,10 @@ function getVisualizationConfig(params) {
                     title: {
                         display: true,
                         text: 'wealth',
-                        font: { size: 24 }
+                        font: { size: 28 }
+                    },
+                    ticks: {
+                        font: { size: 18 }
                     }
                 }
             },
@@ -290,27 +296,42 @@ function getVisualizationConfig(params) {
                 xValue: t1,
                 yValue: w1,
                 content: [w1.toFixed(2)],
-                position: 'bottom', // Below the curve (before-tax wealth)
-                font: { size: 14 },
-                color: 'black'
+                position: 'center',
+                xAdjust: 15,  // Move right
+                yAdjust: 15,  // Move down (below the curve)
+                font: { size: 16 },
+                color: 'black',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
+                borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label2 = {
                 type: 'label',
                 xValue: t1,
                 yValue: w1 * (1 - tau),
                 content: [(w1 * (1 - tau)).toFixed(2)],
-                position: 'top', // Above the curve (after-tax wealth)
-                font: { size: 14 },
-                color: 'black'
+                position: 'center',
+                xAdjust: -15, // Move left 
+                yAdjust: -15, // Move up (above the curve)
+                font: { size: 16 },
+                color: 'black',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
+                borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label3 = {
                 type: 'label',
                 xValue: t1 + t2,
                 yValue: w2,
                 content: [w2.toFixed(2)],
-                position: 'left', // Left of the point (bequest)
-                font: { size: 14 },
-                color: 'black'
+                position: 'center',
+                xAdjust: -25, // Move well to the left so it's visible
+                yAdjust: 0,   // Keep at same height
+                font: { size: 16 },
+                color: 'black',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
+                borderWidth: 1
             };
             config.options.scales.x.max = t1 + t2;
             config.options.scales.y.max = 3;
@@ -358,6 +379,7 @@ function getVisualizationConfig(params) {
             config.options.scales.x.max = t1 + t2;
             config.options.scales.y.max = cmax;
             config.options.scales.y.title.text = 'consumption';
+            config.options.scales.y.title.font = { size: 28 };
             break;
 
         case 'Tax Effect Curves':
@@ -397,7 +419,9 @@ function getVisualizationConfig(params) {
             });
             config.options.scales.x.max = 0.5;
             config.options.scales.x.title.text = 'tax rate';
+            config.options.scales.x.title.font = { size: 28 };
             config.options.scales.y.title.text = 'wealth';
+            config.options.scales.y.title.font = { size: 28 };
             config.options.scales.y.max = undefined; // auto
             config.options.plugins.legend.display = true;
             break;
@@ -428,5 +452,3 @@ function getTaxTable(params) {
         </table>
     `;
 }
-
-
