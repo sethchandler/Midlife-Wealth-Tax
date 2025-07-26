@@ -1,5 +1,4 @@
 // ui.js
-// ui.js
 let chart;
 const ctx = document.getElementById('myChart').getContext('2d');
 
@@ -45,22 +44,13 @@ function updateChart() {
     }
 }
 
-let updateTimeout;
 const inputs = document.querySelectorAll('input[type="range"], select');
 inputs.forEach(input => {
     input.addEventListener('input', () => {
-        updateValues(); // Update displayed values immediately
-        
-        // Debounce the chart update to avoid constant recalculation
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(updateChart, 75); // Wait 150ms after last change
+        updateValues();
+        updateChart();
     });
 });
 
-
-
-
 updateValues();
 updateChart();
-
-
