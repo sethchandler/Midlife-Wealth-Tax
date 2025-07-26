@@ -1,5 +1,8 @@
 // main.js - Corrected version matching Wolfram constraints exactly
 
+// Cache for last good optimization result (warm starting)
+let lastOptimalResult = null;
+
 function kappa(r, rho, gamma) {
     return (r * (gamma - 1) + rho) / gamma;
 }
@@ -60,21 +63,50 @@ function lifetimeU(r, rho, gamma, t1, t2, beta, eta, tau, w0, w1, w2) {
 function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
     const maxW1 = Math.exp(r * t1);
     
-    // Use finer grid search based on debug results
-    let bestW1 = 0, bestW2 = 0, bestU = -Infinity;
+    // Use warm starting - begin search near last good result if available
+    let searchCenterW1, searchCenterW2;
     
-    // Fine grid search in the region we know contains the optimum
-    const w1_min = 1.59, w1_max = 1.61, w1_steps = 100;
-    const w2_min = 2.30, w2_max = 2.37, w2_steps = 100;
+    if (lastOptimalResult && lastOptimalResult.length === 2) {
+        // Start search around previous result
+        searchCenterW1 = lastOptimalResult[0];
+        searchCenterW2 = lastOptimalResult[1];
+        
+        // Verify previous result is still feasible with new parameters
+        if (searchCenterW1 > 0 && searchCenterW2 > 0 && 
+            searchCenterW1 < maxW1 && 
+            searchCenterW2 < searchCenterW1 * (1 - tau) * Math.exp(r * t2)) {
+            // Previous result is feasible, use it as center
+        } else {
+            // Previous result no longer feasible, use default center
+            searchCenterW1 = maxW1 * 0.6;
+            searchCenterW2 = maxW1 * 0.5;
+        }
+    } else {
+        // No previous result, use default center
+        searchCenterW1 = maxW1 * 0.6;
+        searchCenterW2 = maxW1 * 0.5;
+    }
     
-    for (let i = 0; i <= w1_steps; i++) {
-        const w1 = w1_min + (w1_max - w1_min) * i / w1_steps;
+    // Define search region around the center (smaller for warm starts)
+    const searchRadius = lastOptimalResult ? 0.1 : 0.4; // Smaller radius if warm starting
+    const w1_min = Math.max(0.01, searchCenterW1 * (1 - searchRadius));
+    const w1_max = Math.min(maxW1 - 0.01, searchCenterW1 * (1 + searchRadius));
+    const w2_min = Math.max(0.01, searchCenterW2 * (1 - searchRadius));
+    const w2_max = Math.min(searchCenterW2 * (1 + searchRadius * 2), maxW1 * 3); // Allow w2 to vary more
+    
+    let bestW1 = searchCenterW1, bestW2 = searchCenterW2, bestU = -Infinity;
+    
+    // Fine grid search in the region around last result
+    const gridSteps = lastOptimalResult ? 50 : 100; // Fewer steps if warm starting
+    
+    for (let i = 0; i <= gridSteps; i++) {
+        const w1 = w1_min + (w1_max - w1_min) * i / gridSteps;
         
         // Check w1 constraint
         if (w1 >= maxW1) continue;
         
-        for (let j = 0; j <= w2_steps; j++) {
-            const w2 = w2_min + (w2_max - w2_min) * j / w2_steps;
+        for (let j = 0; j <= gridSteps; j++) {
+            const w2 = w2_min + (w2_max - w2_min) * j / gridSteps;
             
             // Check all constraints
             if (w1 > 0 && w2 > 0 && w1 < maxW1 && w2 < w1 * (1 - tau) * Math.exp(r * t2)) {
@@ -90,11 +122,14 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
     }
     
     if (bestU === -Infinity) {
-        console.warn('Fine grid search failed, using fallback');
+        console.warn('Grid search failed, using previous result or fallback');
+        if (lastOptimalResult) {
+            return lastOptimalResult; // Return previous result if current search fails
+        }
         return [maxW1 * 0.5, maxW1 * 0.4];
     }
     
-    // Final refinement with numeric optimization
+    // Final refinement with numeric optimization, starting from grid result
     const objectiveFunction = (vars) => {
         const w1 = vars[0];
         const w2 = vars[1];
@@ -119,6 +154,8 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
             const [finalW1, finalW2] = result.solution;
             
             if (finalW1 > 0 && finalW2 > 0 && finalW1 < maxW1 && finalW2 < finalW1 * (1 - tau) * Math.exp(r * t2)) {
+                // Cache this result for next time
+                lastOptimalResult = [finalW1, finalW2];
                 return [finalW1, finalW2];
             }
         }
@@ -126,6 +163,8 @@ function optimalWealthPair(r, rho, gamma, t1, t2, beta, eta, tau, w0 = 1) {
         console.warn('Refinement optimization failed:', error);
     }
     
+    // Cache grid result if refinement fails but grid succeeded
+    lastOptimalResult = [bestW1, bestW2];
     return [bestW1, bestW2];
 }
 
@@ -297,12 +336,12 @@ function getVisualizationConfig(params) {
                 yValue: w1,
                 content: [w1.toFixed(2)],
                 position: 'center',
-                xAdjust: -15,  
-                yAdjust: -15,  
+                xAdjust: 15,  // Move right
+                yAdjust: 15,  // Move down (below the curve)
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'rgba(128,128,128,0.3)',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label2 = {
@@ -311,12 +350,12 @@ function getVisualizationConfig(params) {
                 yValue: w1 * (1 - tau),
                 content: [(w1 * (1 - tau)).toFixed(2)],
                 position: 'center',
-                xAdjust: 15,
-                yAdjust: 15, // Move up (above the curve)
+                xAdjust: -15, // Move left 
+                yAdjust: -15, // Move up (above the curve)
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'rgba(128,128,128,0.2',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label3 = {
@@ -329,8 +368,8 @@ function getVisualizationConfig(params) {
                 yAdjust: 0,   // Keep at same height
                 font: { size: 16 },
                 color: 'black',
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'rgba(128,128,128,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.8)',
+                borderColor: 'black',
                 borderWidth: 1
             };
             config.options.scales.x.max = t1 + t2;
