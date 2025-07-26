@@ -45,13 +45,20 @@ function updateChart() {
     }
 }
 
+let updateTimeout;
 const inputs = document.querySelectorAll('input[type="range"], select');
 inputs.forEach(input => {
     input.addEventListener('input', () => {
-        updateValues();
-        updateChart();
+        updateValues(); // Update displayed values immediately
+        
+        // Debounce the chart update to avoid constant recalculation
+        clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(updateChart, 75); // Wait 150ms after last change
     });
 });
+
+
+
 
 updateValues();
 updateChart();
