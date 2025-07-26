@@ -350,7 +350,7 @@ function getVisualizationConfig(params) {
                 yValue: w1 * (1 - tau),
                 content: [(w1 * (1 - tau)).toFixed(2)],
                 position: 'center',
-                xAdjust: -15, // Move left 
+                xAdjust: 15, // Move left 
                 yAdjust: -15, // Move up (above the curve)
                 font: { size: 16 },
                 color: 'black',
