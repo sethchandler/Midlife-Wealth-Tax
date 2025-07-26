@@ -298,11 +298,11 @@ function getVisualizationConfig(params) {
                 content: [w1.toFixed(2)],
                 position: 'center',
                 xAdjust: -15,  
-                yAdjust: 15,  // Move down (below the curve)
+                yAdjust: -15,  
                 font: { size: 16 },
                 color: 'black',
                 backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'gray',
+                borderColor: 'rgba(128,128,128,0.3)',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label2 = {
@@ -312,11 +312,11 @@ function getVisualizationConfig(params) {
                 content: [(w1 * (1 - tau)).toFixed(2)],
                 position: 'center',
                 xAdjust: 15,
-                yAdjust: -15, // Move up (above the curve)
+                yAdjust: 15, // Move up (above the curve)
                 font: { size: 16 },
                 color: 'black',
                 backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'gray',
+                borderColor: 'rgba(128,128,128,0.2',
                 borderWidth: 1
             };
             config.options.plugins.annotation.annotations.label3 = {
@@ -330,7 +330,7 @@ function getVisualizationConfig(params) {
                 font: { size: 16 },
                 color: 'black',
                 backgroundColor: 'rgba(255,255,255,0.3)',
-                borderColor: 'gray',
+                borderColor: 'rgba(128,128,128,0.1)',
                 borderWidth: 1
             };
             config.options.scales.x.max = t1 + t2;
