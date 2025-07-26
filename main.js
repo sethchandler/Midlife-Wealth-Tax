@@ -428,3 +428,5 @@ function getTaxTable(params) {
         </table>
     `;
 }
+
+
