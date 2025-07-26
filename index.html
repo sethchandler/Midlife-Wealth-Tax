@@ -4,7 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tax Effect Visualization</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .controls input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+        }
+        
+        .controls select {
+            padding: 5px;
+            font-size: 14px;
+        }
+        
+        #chartContainer {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        #chartContainer canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #tableContainer {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        #tableContainer table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #tableContainer td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        p {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
     <div class="controls">
@@ -16,7 +91,7 @@
         <label>Tax rate: <input type="range" id="tau" min="0" max="0.5" step="0.01" value="0"><span id="tau-val">0</span></label>
         <label>Years before tax: <input type="range" id="t1" min="10" max="30" step="1" value="20"><span id="t1-val">20</span></label>
         <label>Years after tax: <input type="range" id="t2" min="10" max="30" step="1" value="25"><span id="t2-val">25</span></label>
-        <label>Visualize: 
+        <label style="grid-column: 1 / -1;">Visualize: 
             <select id="visualize">
                 <option value="Wealth Trajectory">Wealth Trajectory</option>
                 <option value="Consumption Trajectory">Consumption Trajectory</option>
@@ -24,10 +99,13 @@
             </select>
         </label>
     </div>
+    
     <div id="chartContainer">
         <canvas id="myChart"></canvas>
     </div>
+    
     <div id="tableContainer"></div>
+    
     <p>Created by Seth J. Chandler for educational use only</p>
     
     <!-- Load dependencies in correct order -->
@@ -51,4 +129,3 @@
     <script src="ui.js"></script>
 </body>
 </html>
-
