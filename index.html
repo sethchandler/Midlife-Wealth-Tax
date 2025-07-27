@@ -82,26 +82,25 @@
             font-style: italic;
         }
 
-        /* Enhanced tooltips */
-        .controls label {
+        /* Info icon styling */
+        .info-icon {
+            display: inline-block;
             position: relative;
             cursor: help;
-            padding: 2px; /* Always have padding to prevent layout shift */
-            border-radius: 4px;
+            font-size: 14px;
+            margin: 0 3px;
+            padding: 2px 4px;
+            border-radius: 50%;
             transition: background-color 0.2s ease;
+            user-select: none;
         }
 
-        .controls label:hover {
-            background-color: #f8f9fa;
+        .info-icon:hover {
+            background-color: rgba(0, 123, 255, 0.1);
         }
 
-        /* Hide default browser tooltips to prevent double tooltips */
-        .controls label[title] {
-            position: relative;
-        }
-
-        /* Custom tooltip styling */
-        .controls label[data-tooltip]:hover::after {
+        /* Custom tooltip styling for info icons */
+        .info-icon[data-tooltip]:hover::after {
             content: attr(data-tooltip);
             position: absolute;
             bottom: 100%;
@@ -118,10 +117,10 @@
             z-index: 1000;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             pointer-events: none;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
-        .controls label[data-tooltip]:hover::before {
+        .info-icon[data-tooltip]:hover::before {
             content: '';
             position: absolute;
             bottom: 100%;
@@ -131,7 +130,20 @@
             border-top-color: #333;
             z-index: 1001;
             pointer-events: none;
-            margin-bottom: 0px;
+            margin-bottom: 2px;
+        }
+
+        /* Mobile-friendly touch targets */
+        @media (max-width: 768px) {
+            .info-icon {
+                font-size: 16px;
+                padding: 4px 6px;
+                min-width: 20px;
+                min-height: 20px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -146,14 +158,14 @@
     </header>
     
     <div class="controls">
-        <label data-tooltip="Annual return on investments and savings. Higher rates favor saving over consumption.">Interest rate: <input type="range" id="r" min="0.01" max="0.09" step="0.01" value="0.06"><span id="r-val">0.06</span></label>
-        <label data-tooltip="How much you prefer consumption now vs. later. Higher values mean you prefer consuming today.">Impatience rate: <input type="range" id="rho" min="0.02" max="0.09" step="0.01" value="0.04"><span id="rho-val">0.04</span></label>
-        <label data-tooltip="How much you dislike uncertainty in consumption. Higher values mean you prefer smooth, predictable consumption.">Consumption risk aversion: <input type="range" id="gamma" min="0.3" max="2.5" step="0.2" value="0.7"><span id="gamma-val">0.7</span></label>
-        <label data-tooltip="How much you dislike uncertainty in the wealth you leave behind. Higher values mean you prefer predictable bequests.">Bequest risk aversion: <input type="range" id="eta" min="0.3" max="2.5" step="0.2" value="1.7"><span id="eta-val">1.7</span></label>
-        <label data-tooltip="How important leaving wealth to heirs is to you. Higher values mean bequests are more important relative to your own consumption.">Bequest importance: <input type="range" id="beta" min="0" max="15" step="0.1" value="3"><span id="beta-val">3</span></label>
-        <label data-tooltip="Percentage of wealth lost to financial aid penalties when your child reaches college age. This is the key policy variable being analyzed.">Tax rate: <input type="range" id="tau" min="0" max="0.5" step="0.01" value="0"><span id="tau-val">0</span></label>
-        <label data-tooltip="Number of years from when you start saving until your child reaches college age (accumulation phase).">Years before tax: <input type="range" id="t1" min="10" max="30" step="1" value="20"><span id="t1-val">20</span></label>
-        <label data-tooltip="Number of years from when your child starts college until end of life (retirement and bequest phase).">Years after tax: <input type="range" id="t2" min="10" max="30" step="1" value="25"><span id="t2-val">25</span></label>
+        <label>Interest rate: <span class="info-icon" data-tooltip="Annual return on investments and savings. Higher rates favor saving over consumption.">ℹ️</span> <input type="range" id="r" min="0.01" max="0.09" step="0.01" value="0.06"><span id="r-val">0.06</span></label>
+        <label>Impatience rate: <span class="info-icon" data-tooltip="How much you prefer consumption now vs. later. Higher values mean you prefer consuming today.">ℹ️</span> <input type="range" id="rho" min="0.02" max="0.09" step="0.01" value="0.04"><span id="rho-val">0.04</span></label>
+        <label>Consumption risk aversion: <span class="info-icon" data-tooltip="How much you dislike uncertainty in consumption. Higher values mean you prefer smooth, predictable consumption.">ℹ️</span> <input type="range" id="gamma" min="0.3" max="2.5" step="0.2" value="0.7"><span id="gamma-val">0.7</span></label>
+        <label>Bequest risk aversion: <span class="info-icon" data-tooltip="How much you dislike uncertainty in the wealth you leave behind. Higher values mean you prefer predictable bequests.">ℹ️</span> <input type="range" id="eta" min="0.3" max="2.5" step="0.2" value="1.7"><span id="eta-val">1.7</span></label>
+        <label>Bequest importance: <span class="info-icon" data-tooltip="How important leaving wealth to heirs is to you. Higher values mean bequests are more important relative to your own consumption.">ℹ️</span> <input type="range" id="beta" min="0" max="15" step="0.1" value="3"><span id="beta-val">3</span></label>
+        <label>Tax rate: <span class="info-icon" data-tooltip="Percentage of wealth lost to financial aid penalties when your child reaches college age. This is the key policy variable being analyzed.">ℹ️</span> <input type="range" id="tau" min="0" max="0.5" step="0.01" value="0"><span id="tau-val">0</span></label>
+        <label>Years before tax: <span class="info-icon" data-tooltip="Number of years from when you start saving until your child reaches college age (accumulation phase).">ℹ️</span> <input type="range" id="t1" min="10" max="30" step="1" value="20"><span id="t1-val">20</span></label>
+        <label>Years after tax: <span class="info-icon" data-tooltip="Number of years from when your child starts college until end of life (retirement and bequest phase).">ℹ️</span> <input type="range" id="t2" min="10" max="30" step="1" value="25"><span id="t2-val">25</span></label>
         <label style="grid-column: 1 / -1;">Visualize: 
             <select id="visualize">
                 <option value="Wealth Trajectory">Wealth Trajectory</option>
